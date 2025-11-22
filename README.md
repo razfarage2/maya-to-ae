@@ -1,7 +1,6 @@
 # Maya To AE
-
-A Python-based Maya standalone exporter that extracts detailed scene data, including meshes, cameras, lights, materials, and AOVs (render passes), and serializes it into a structured JSON format. Designed for Passing AOVs into After effects with ease.
 ---
+A Python-based Maya standalone exporter that extracts detailed scene data, including meshes, cameras, lights, materials, and AOVs (render passes), and serializes it into a structured JSON format. Designed for Passing Maya data into After effects with ease.
 
 ## Features
 
