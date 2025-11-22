@@ -43,7 +43,7 @@ def main():
         import maya.cmds as cmds
         import maya.mel as mel
 
-        print("✓ Maya standalone initialized")
+        print("Maya standalone initialized")
     except Exception as e:
         print(f"ERROR: Failed to initialize Maya standalone: {e}")
         sys.exit(1)
@@ -54,7 +54,7 @@ def main():
 
         if args.frame is not None:
             cmds.currentTime(args.frame)
-            print(f"✓ Set to frame {args.frame}")
+            print(f"Set to frame {args.frame}")
         else:
             args.frame = cmds.currentTime(query=True)
 
@@ -88,6 +88,7 @@ def main():
             )
 
             print(f"RENDER_COMPLETE:{final_path}")
+            sys.stdout.flush()
 
         else:
             print("--- STARTING METADATA EXTRACTION ---")
@@ -107,14 +108,14 @@ def main():
                 include_aovs=not args.no_aovs, include_materials=not args.no_materials
             )
 
-            print(f"✓ Extracted: {len(scene_data.get('meshes', []))} meshes")
+            print(f"Extracted: {len(scene_data.get('meshes', []))} meshes")
 
             if args.dry_run:
-                print("\n✓ Dry run complete - scene is valid")
+                print("\nDry run complete - scene is valid")
             else:
                 serializer = SceneSerializer()
                 serializer.write(scene_data, output_path)
-                print(f"✓ Export complete: {output_path}")
+                print(f"Export complete: {output_path}")
 
                 size_kb = output_path.stat().st_size / 1024
                 print(f"File size: {size_kb:.2f} KB")
@@ -126,7 +127,7 @@ def main():
 
     finally:
         maya.standalone.uninitialize()
-        print("\n✓ Maya standalone shut down")
+        print("\nMaya standalone shut down")
 
 
 if __name__ == "__main__":
