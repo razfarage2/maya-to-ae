@@ -1,7 +1,5 @@
 [project]
-name = "maya-to-ae"
+name = "maya-ae-bridge"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
-requires-python = ">=3.12"
-dependencies = []
+description = "Maya to After Effects multi-pass exporter"
+requires-python = ">=3.9"
