@@ -15,6 +15,7 @@ Mayaswatches/
 *.tmp
 *.log
 workspace.mel
+*.exr
 
 # Exports
 data/exports/*.json
