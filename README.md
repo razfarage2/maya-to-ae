@@ -45,7 +45,6 @@ A Python-based Maya standalone exporter that extracts detailed scene data, inclu
 2. **Project Setup**
    ```bash
    git clone https://github.com/razfarage2/maya-to-ae.git
-   cd maya-to-ae/maya_side
 
 3. **Run Tests**
    On Windows PowerShell:
