@@ -2,132 +2,125 @@ import sys
 import argparse
 from pathlib import Path
 import traceback
+import os
 
 
 def main():
     parser = argparse.ArgumentParser(description="Maya-to-AE Bridge")
-
     parser.add_argument("scene_file", type=str, help="Path to .ma or .mb file")
-    parser.add_argument("--output", "-o", type=str, help="Output path (JSON or Image)")
-    parser.add_argument(
-        "--frame", "-f", type=float, help="Frame number (default: current)"
-    )
-    parser.add_argument(
-        "--dry-run", action="store_true", help="Validate without exporting"
-    )
-
-    parser.add_argument("--no-aovs", action="store_true", help="Skip AOV extraction")
-    parser.add_argument(
-        "--no-materials", action="store_true", help="Skip material extraction"
-    )
-
     parser.add_argument("--render", action="store_true", help="Enable Render Mode")
     parser.add_argument(
-        "--aov", type=str, help="Specific AOV to render (required for --render)"
+        "--dry-run", action="store_true", help="Just check file validity"
+    )
+    parser.add_argument("--output", "-o", type=str, help="Output path template")
+    parser.add_argument(
+        "--aov", type=str, default="preview", help="AOV to render (default: preview)"
     )
     parser.add_argument(
         "--camera", type=str, default="persp", help="Camera to render from"
     )
+    parser.add_argument("--frame", "-f", type=float, help="Single frame fallback")
+    parser.add_argument("--start_frame", type=float, help="Start frame")
+    parser.add_argument("--end_frame", type=float, help="End frame")
+    parser.add_argument("--no-aovs", action="store_true")
+    parser.add_argument("--no-materials", action="store_true")
 
     args = parser.parse_args()
-
     scene_path = Path(args.scene_file)
-    if not scene_path.exists():
-        print(f"ERROR: Scene file not found: {scene_path}")
-        sys.exit(1)
-
     try:
         import maya.standalone
 
         maya.standalone.initialize()
         import maya.cmds as cmds
-        import maya.mel as mel
 
-        print("Maya standalone initialized")
+        sys.stdout.write("[OK] Maya initialized\n")
     except Exception as e:
-        print(f"ERROR: Failed to initialize Maya standalone: {e}")
+        print(f"CRITICAL ERROR: Maya Init Failed: {e}")
         sys.exit(1)
 
     try:
-        print(f"Opening scene: {scene_path}")
+        if not scene_path.exists():
+            raise FileNotFoundError(f"Scene file not found: {scene_path}")
+
         cmds.file(str(scene_path), open=True, force=True)
-
-        if args.frame is not None:
-            cmds.currentTime(args.frame)
-            print(f"Set to frame {args.frame}")
-        else:
-            args.frame = cmds.currentTime(query=True)
-
         if args.render:
-            if not args.aov:
-                print("ERROR: --aov argument is required when using --render")
-                sys.exit(1)
-
-            print(f"--- STARTING SILENT RENDER [{args.aov}] ---")
-
             try:
                 from renderer import SceneRenderer
             except ImportError:
-                print(
-                    "ERROR: Could not import 'renderer.py'. Ensure it is in the maya_side folder."
-                )
+                print("ERROR: Could not import 'renderer.py'.")
                 sys.exit(1)
 
-            if args.output:
-                output_path = args.output
+            if args.start_frame is not None and args.end_frame is not None:
+                start_f = int(args.start_frame)
+                end_f = int(args.end_frame)
             else:
-                temp_dir = Path(__file__).parent.parent / "data" / "temp_render"
-                output_path = temp_dir / f"{args.aov}.{int(args.frame):04d}.exr"
+                fallback = int(args.frame) if args.frame is not None else 1
+                start_f = fallback
+                end_f = fallback
+
+            if args.output:
+                out_template = Path(args.output)
+            else:
+                current_dir = Path(__file__).parent.absolute()
+                temp_dir = current_dir.parent / "data" / "temp_render"
+                out_template = temp_dir / f"{args.aov}"
 
             r = SceneRenderer()
-            final_path = r.render_pass(
-                aov_name=args.aov,
-                camera=args.camera,
-                frame=args.frame,
-                output_path=str(output_path),
-            )
+            first_file_path = ""
 
-            print(f"RENDER_COMPLETE:{final_path}")
+            print(f"--- RENDER START: {args.aov} ({start_f}-{end_f}) ---")
+            sys.stdout.flush()
+
+            for f in range(start_f, end_f + 1):
+                current_path = out_template.parent / f"{out_template.name}.{f:04d}.exr"
+
+                result = r.render_pass(
+                    aov_name=args.aov,
+                    camera=args.camera,
+                    frame=f,
+                    output_path=str(current_path),
+                )
+
+                if f == start_f:
+                    first_file_path = result
+
+                sys.stdout.write(f"Rendering frame {f}...\n")
+                sys.stdout.flush()
+
+            print(f"RENDER_COMPLETE:{first_file_path}")
             sys.stdout.flush()
 
         else:
-            print("--- STARTING METADATA EXTRACTION ---")
-
             from scene_reader import SceneReader
             from serializer import SceneSerializer
 
             if args.output:
-                output_path = Path(args.output)
+                out_path = Path(args.output)
             else:
-                output_dir = Path(__file__).parent.parent / "data" / "exports"
-                output_dir.mkdir(parents=True, exist_ok=True)
-                output_path = output_dir / "output.json"
+                out_dir = Path(__file__).parent.parent / "data" / "exports"
+                out_dir.mkdir(parents=True, exist_ok=True)
+                out_path = out_dir / "output.json"
 
             reader = SceneReader()
             scene_data = reader.extract_scene(
                 include_aovs=not args.no_aovs, include_materials=not args.no_materials
             )
 
-            print(f"Extracted: {len(scene_data.get('meshes', []))} meshes")
+            serializer = SceneSerializer()
+            serializer.write(scene_data, out_path)
 
-            if args.dry_run:
-                print("\nDry run complete - scene is valid")
-            else:
-                serializer = SceneSerializer()
-                serializer.write(scene_data, output_path)
-                print(f"Export complete: {output_path}")
-
-                size_kb = output_path.stat().st_size / 1024
-                print(f"File size: {size_kb:.2f} KB")
+            print(f"[OK] Metadata exported to {out_path}")
 
     except Exception as e:
-        print(f"\nCRITICAL ERROR: {e}")
+        print(f"\nCRITICAL EXECUTION ERROR: {e}")
         traceback.print_exc()
         sys.exit(1)
 
     finally:
-        maya.standalone.uninitialize()
-        print("\nMaya standalone shut down")
+        try:
+            maya.standalone.uninitialize()
+        except:
+            pass
 
 
 if __name__ == "__main__":
