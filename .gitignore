@@ -1,14 +1,28 @@
-# Python
+# --- REACT / FRONTEND (ae_side) ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.env
+.env.local
+.DS_Store
+
+# --- PYTHON / BACKEND ---
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
 *.egg-info/
-dist/
-build/
 
-# Maya
+# --- BUILD OUTPUTS (Handles both React dist and Python builds) ---
+dist/
+dist-ssr/
+build/
+*.local
+
+# --- MAYA ---
 *.mb.swatches
 *.ma.swatches
 Mayaswatches/
@@ -17,22 +31,27 @@ Mayaswatches/
 workspace.mel
 *.exr
 
-# Exports
+# --- EXPORTS & RENDER ---
 data/exports/*.json
 !data/exports/.gitkeep
+data/temp_render/*.exr
 
-# UVRun
+# --- TOOLS ---
 .uv/
 uv.lock
 
-# IDE
+# --- IDE ---
 .vscode/
 .idea/
 *.sublime-*
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
-# OS
-.DS_Store
+# --- OS ---
 Thumbs.db
 
-#scripts
+# --- SCRIPTS ---
 syncGit.ps1
